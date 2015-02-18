@@ -5,9 +5,9 @@
 
 class String
 
-  def num_occurrences_of(str, occurrences = 0)
-    if self.include?(str)
-      num_occurrences_of sub(str, ''), occurrences + 1
+  def num_occurrences_of(token, occurrences = 0)
+    if self.include?(token)
+      sub(token, '').num_occurrences_of(token, occurrences + 1)
     else
       occurrences
     end
@@ -65,7 +65,7 @@ class Play
 
   def initialize(player)
     @player = player
-    @white_cards = []
+    @white_cards = Deck.new([], "white cards played by #{player}")
   end
 
   def to_s
@@ -122,8 +122,8 @@ class Player
 
   def initialize(name)
     @name = name
-    @awarded_cards = []
-    @white_cards = []
+    @awarded_cards = Deck.new([], "awarded_cards")
+    @white_cards = Deck.new([], "#{name}'s white cards")
   end
 
   def pick_winner(plays)
@@ -143,12 +143,49 @@ class Player
     play.black_card = black_card
     played_white_cards =
       black_card.num_blanks.times.map do
-        @white_cards.pop
+				@white_cards.pop
       end
-    play.white_cards = played_white_cards
-    play
+    play.white_cards.push(*played_white_cards)
+    puts "#{self} plays #{play}"
+		play
   end
+end
 
+class Deck
+	
+	def initialize(cards, type)
+		@cards = cards
+		@type = type
+	end
+
+	def shuffle
+		@cards.shuffle!
+	end
+
+	def pop
+		next_card = @cards.pop
+		if !next_card
+			raise DeckEmpty.new("The #{@type} deck has run out of cards.")
+		end
+		next_card
+	end
+
+	def push(*cards)
+		cards.each do |card|
+			if !card
+				raise "empty card added to deck"
+			end
+		end
+		@cards.push *cards
+	end
+
+	def each(&block)
+		@cards.each(&block)
+	end
+
+	class DeckEmpty < StandardError
+		
+	end
 end
 
 class Game
@@ -170,6 +207,9 @@ class Game
       rescue PlayerWon => ex
         puts ex.message
         break
+			rescue Deck::DeckEmpty => ex
+				puts ex.message
+				break
       end
     end
   end
@@ -208,10 +248,14 @@ black_cards =
     BlackCard.new(desc)
   end
 
+black_deck = Deck.new(black_cards, "black")
+
 white_cards =
   3.times.map do |idx|
     WhiteCard.new("Description #{idx}")
   end
+
+white_deck = Deck.new(white_cards, "white")
 
 #round = Round.new(judge)
 
@@ -226,5 +270,6 @@ white_cards =
   #puts play
 #end
 
-game = Game.new(players, white_cards, black_cards)
+game = Game.new(players, white_deck, black_deck)
 game.simulate
+
